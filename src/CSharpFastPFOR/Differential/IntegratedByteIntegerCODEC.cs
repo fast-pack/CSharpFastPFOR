@@ -7,15 +7,14 @@
 
 /**
  * Interface describing a CODEC to compress integers to bytes.
- * 
+ *
  * "Integrated" means that it uses differential coding.
- * 
+ *
  * @author Daniel Lemire
- * 
+ *
  */
-namespace Genbox.CSharpFastPFOR.Differential
+namespace Genbox.CSharpFastPFOR.Differential;
+
+public interface IntegratedByteIntegerCODEC : ByteIntegerCODEC
 {
-    public interface IntegratedByteIntegerCODEC : ByteIntegerCODEC
-    {
-    }
 }

@@ -1,48 +1,38 @@
-﻿using System;
-using System.IO;
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
-namespace Genbox.CSharpFastPFOR.Port
+namespace Genbox.CSharpFastPFOR.Port;
+
+public class IntBuffer(MemoryStream ms, ByteOrder order)
 {
-    public class IntBuffer
+    public void get(int[] dst, int offset, int length)
     {
-        private readonly MemoryStream _ms;
-        private readonly ByteOrder _order;
+        int end = offset + length;
 
-        public IntBuffer(MemoryStream ms, ByteOrder order)
+        using BinaryReader br = new BinaryReader(ms, Encoding.UTF8, true);
+
+        for (int i = offset; i < end; i++)
         {
-            _ms = ms;
-            _order = order;
+            int value = br.ReadInt32();
+
+            if (BitConverter.IsLittleEndian && order == ByteOrder.BIG_ENDIAN)
+                value = reverseBytes(value);
+
+            dst[i] = value;
         }
+    }
 
-        public void get(int[] dst, int offset, int length)
-        {
-            int end = offset + length;
+    public static int reverseBytes(int i)
+    {
+        return (i >>> 24) |
+               ((i >> 8) & 0xFF00) |
+               ((i << 8) & 0xFF0000) |
+               ((i << 24));
+    }
 
-            BinaryReader br = new BinaryReader(_ms);
-
-            for (int i = offset; i < end; i++)
-            {
-                int value = br.ReadInt32();
-
-                if (BitConverter.IsLittleEndian && _order == ByteOrder.BIG_ENDIAN)
-                    value = reverseBytes(value);
-
-                dst[i] = value;
-            }
-        }
-
-        public static int reverseBytes(int i)
-        {
-            return ((int)((uint)i >> 24)) |
-                   ((i >> 8) & 0xFF00) |
-                   ((i << 8) & 0xFF0000) |
-                   ((i << 24));
-        }
-
-        private static void checkBounds(int off, int len, int size)
-        {
-            if ((off | len | (off + len) | (size - (off + len))) < 0)
-                throw new IndexOutOfRangeException();
-        }
+    private static void checkBounds(int off, int len, int size)
+    {
+        if ((off | len | (off + len) | (size - (off + len))) < 0)
+            throw new IndexOutOfRangeException();
     }
 }

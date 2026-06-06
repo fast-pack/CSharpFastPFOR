@@ -5,78 +5,77 @@
 
 /**
  * PerformanceLogger for IntegerCODEC.
- * 
+ *
  * @author MURAOKA Taro http://github.com/koron
  */
-namespace Genbox.CSharpFastPFOR.Benchmarks
+namespace Genbox.CSharpFastPFOR.Benchmarks;
+
+public class PerformanceLogger
 {
-    public class PerformanceLogger
+    internal class Timer
     {
-        public class Timer
+        private long startNano;
+        private long duration = 0;
+
+        public void start()
         {
-            private long startNano;
-            private long duration = 0;
-
-            public void start()
-            {
-                this.startNano = Port.System.nanoTime();
-            }
-
-            public long end()
-            {
-                return this.duration += Port.System.nanoTime()- this.startNano;
-            }
-
-            public long getDuration()
-            {
-                return this.duration;
-            }
+            this.startNano = Port.System.nanoTime();
         }
 
-        public readonly Timer compressionTimer = new Timer();
-        public readonly Timer decompressionTimer = new Timer();
-
-        private long originalSize = 0;
-        private long compressedSize = 0;
-
-        public long addOriginalSize(long value)
+        public long end()
         {
-            return this.originalSize += value;
+            return this.duration += Port.System.nanoTime()- this.startNano;
         }
 
-        public long addCompressedSize(long value)
+        public long getDuration()
         {
-            return this.compressedSize += value;
+            return this.duration;
         }
+    }
 
-        private long getOriginalSize()
-        {
-            return this.originalSize;
-        }
+   internal readonly Timer compressionTimer = new Timer();
+   internal readonly Timer decompressionTimer = new Timer();
 
-        private long getCompressedSize()
-        {
-            return this.compressedSize;
-        }
+    private long originalSize = 0;
+    private long compressedSize = 0;
 
-        public double getBitPerInt()
-        {
-            return this.compressedSize * 32.0 / this.originalSize;
-        }
+    public long addOriginalSize(long value)
+    {
+        return this.originalSize += value;
+    }
 
-        private static double getMiS(long size, long nanoTime)
-        {
-            return (size * 1e-6) / (nanoTime * 1.0e-9);
-        }
+    public long addCompressedSize(long value)
+    {
+        return this.compressedSize += value;
+    }
 
-        public double getCompressSpeed()
-        {
-            return getMiS(this.originalSize, this.compressionTimer.getDuration());
-        }
+    private long getOriginalSize()
+    {
+        return this.originalSize;
+    }
 
-        public double getDecompressSpeed()
-        {
-            return getMiS(this.originalSize, this.decompressionTimer.getDuration());
-        }
+    private long getCompressedSize()
+    {
+        return this.compressedSize;
+    }
+
+    public double getBitPerInt()
+    {
+        return this.compressedSize * 32.0 / this.originalSize;
+    }
+
+    private static double getMiS(long size, long nanoTime)
+    {
+        return (size * 1e-6) / (nanoTime * 1.0e-9);
+    }
+
+    public double getCompressSpeed()
+    {
+        return getMiS(this.originalSize, this.compressionTimer.getDuration());
+    }
+
+    public double getDecompressSpeed()
+    {
+        return getMiS(this.originalSize, this.decompressionTimer.getDuration());
     }
 }

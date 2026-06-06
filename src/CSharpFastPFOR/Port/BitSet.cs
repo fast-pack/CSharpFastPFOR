@@ -1,35 +1,34 @@
-﻿using System.Collections;
+using System.Collections;
 
-namespace Genbox.CSharpFastPFOR.Port
+namespace Genbox.CSharpFastPFOR.Port;
+
+public class BitSet
 {
-    public class BitSet
+    private BitArray _bitArray;
+
+    public BitSet(int max)
     {
-        private BitArray _bitArray;
+        _bitArray = new BitArray(max);
+    }
 
-        public BitSet(int max)
+    public bool get(int i)
+    {
+        return _bitArray[i];
+    }
+
+    public void set(int i)
+    {
+        _bitArray[i] = true;
+    }
+
+    public int nextSetBit(int fromIndex)
+    {
+        for (int j = fromIndex; j < _bitArray.Length; j++)
         {
-            _bitArray = new BitArray(max);
+            if (_bitArray[j])
+                return j;
         }
 
-        public bool get(int i)
-        {
-            return _bitArray[i];
-        }
-
-        public void set(int i)
-        {
-            _bitArray[i] = true;
-        }
-
-        public int nextSetBit(int fromIndex)
-        {
-            for (int j = fromIndex; j < _bitArray.Length; j++)
-            {
-                if (_bitArray[j])
-                    return j;
-            }
-
-            return -1;
-        }
+        return -1;
     }
 }

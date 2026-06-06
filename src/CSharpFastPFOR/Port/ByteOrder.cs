@@ -1,8 +1,7 @@
-﻿namespace Genbox.CSharpFastPFOR.Port
+namespace Genbox.CSharpFastPFOR.Port;
+
+public enum ByteOrder
 {
-    public enum ByteOrder
-    {
-        LITTLE_ENDIAN,
-        BIG_ENDIAN
-    }
+    LITTLE_ENDIAN,
+    BIG_ENDIAN
 }

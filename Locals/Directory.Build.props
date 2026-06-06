@@ -1,0 +1,8 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <Description>A C# port of the simple integer compression library JavaFastPFOR by Daniel Lemire</Description>
+    <PackageTags>bitpacking;fastpfor</PackageTags>
+  </PropertyGroup>
+
+</Project>
