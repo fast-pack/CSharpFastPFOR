@@ -1,0 +1,94 @@
+#pragma warning disable CA1715 // Preserve the JavaFastPFOR interface name.
+/*
+ * This is code is released under the
+ * Apache License Version 2.0 http://www.apache.org/licenses/.
+ *
+ * (c) Daniel Lemire, http://lemire.me/en/
+ */
+
+using Genbox.CSharpFastPFOR.IntegerCompression;
+
+namespace Genbox.CSharpFastPFOR.LongCompression;
+
+/*
+ * Interface describing a standard CODEC to compress longs. This is a
+ * variation on the LongCODEC interface meant to be used for random access
+ * (i.e., given a large array, you can segment it and decode just the subarray you need).
+ *
+ * The main difference is that we must specify the number of longs we wish to
+ * decode. This information should be stored elsewhere.
+ *
+ * This interface was designed by the Terrier team for their search engine.
+ *
+ * @author Benoit Lacelle
+ */
+public interface SkippableLongCODEC
+{
+    /*
+     * Compress data from an array to another array.
+     *
+     * Both inpos and outpos are modified to represent how much data was read
+     * and written to. If 12 longs (inlength = 12) are compressed to 3 longs, then
+     * inpos will be incremented by 12 while outpos will be incremented by 3. We
+     * use IntWrapper to pass the values by reference.
+     *
+     * @param in
+     * input array
+     * @param inpos
+     * where to start reading in the array
+     * @param inlength
+     * how many longs to compress
+     * @param out
+     * output array
+     * @param outpos
+     * where to write in the output array
+     */
+    void headlessCompress(long[] @in,
+        IntWrapper inpos,
+        int inlength,
+        long[] @out,
+        IntWrapper outpos);
+
+    /*
+     * Uncompress data from an array to another array.
+     *
+     * Both inpos and outpos parameters are modified to indicate new positions
+     * after read/write.
+     *
+     * @param in
+     * array containing data in compressed form
+     * @param inpos
+     * where to start reading in the array
+     * @param inlength
+     * length of the compressed data (ignored by some schemes)
+     * @param out
+     * array where to write the uncompressed output
+     * @param outpos
+     * where to start writing the uncompressed output in out
+     * @param num
+     * number of longs we want to decode, the actual number of longs decoded can be less
+     */
+    void headlessUncompress(long[] @in,
+        IntWrapper inpos,
+        int inlength,
+        long[] @out,
+        IntWrapper outpos,
+        int num);
+
+    /*
+     * Compute the maximum number of longs that might be required to store
+     * the compressed form of a given input array segment, without headers.
+     * <p>
+     * This is useful to pre-allocate the output buffer before calling
+     * {@link #headlessCompress(long[], IntWrapper, int, long[], IntWrapper)}.
+     * </p>
+     * @param compressedPositions
+     * since not all schemes compress every input integer, this parameter
+     * returns how many input integers will actually be compressed.
+     * This is useful when composing multiple schemes.
+     * @param inlength
+     * number of longs to be compressed
+     * @return the maximum number of longs needed in the output array
+     */
+    int maxHeadlessCompressedLength(IntWrapper compressedPositions, int inlength);
+}

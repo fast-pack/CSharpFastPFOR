@@ -1,12 +1,14 @@
-/**
+/*
  * Just some basic sanity tests.
  *
  * @author Daniel Lemire
  */
 
-using Genbox.CSharpFastPFOR.Differential;
-using Genbox.CSharpFastPFOR.Port;
-using Genbox.CSharpFastPFOR.Synth;
+using Genbox.CSharpFastPFOR.IntegerCompression;
+using Genbox.CSharpFastPFOR.IntegerCompression.Differential;
+using Genbox.CSharpFastPFOR.IntegerCompression.Port;
+using Genbox.CSharpFastPFOR.IntegerCompression.Synth;
+using Genbox.CSharpFastPFOR.IntegerCompression.Vector;
 using Genbox.CSharpFastPFOR.Tests.Port;
 using Genbox.CSharpFastPFOR.Tests.Utils;
 
@@ -19,6 +21,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         new IntegratedComposition(new IntegratedBinaryPacking(), new IntegratedVariableByte()),
         new JustCopy(),
         new VariableByte(),
+        new GroupSimple9(),
         new IntegratedVariableByte(),
         new Composition(new BinaryPacking(), new VariableByte()),
         new Composition(new NewPFD(), new VariableByte()),
@@ -29,8 +32,11 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         new Composition(new FastPFOR(), new VariableByte()),
         new Simple9(),
         new Simple16(),
+        new GroupSimple9(),
         new Composition(new XorBinaryPacking(), new VariableByte()),
-        new Composition(new DeltaZigzagBinaryPacking(), new DeltaZigzagVariableByte())
+        new Composition(new DeltaZigzagBinaryPacking(), new DeltaZigzagVariableByte()),
+        new Composition(new VectorBinaryPacking(), new VariableByte()),
+        new Composition(new VectorFastPFOR(), new VariableByte())
     ];
 
     [Fact]
@@ -53,9 +59,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
                 IntWrapper cOffset = new IntWrapper(0);
                 C.uncompress(b, bOffset, len, c, cOffset);
                 if (!Arrays.equals(a, c))
-                {
                     testOutputHelper.WriteLine("Problem with " + C);
-                }
                 Assert2.assertArrayEquals(a, c);
             }
         }
@@ -76,20 +80,24 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
                 int[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
-                        throw new Exception("bug");
+                        throw new InvalidOperationException("bug");
+                }
             }
             for (int L = 128; L <= N; L *= 2)
             {
                 int[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
                     {
                         testOutputHelper.WriteLine(Arrays.toString(Arrays.copyOf(answer, L)));
                         testOutputHelper.WriteLine(Arrays.toString(Arrays.copyOf(data, L)));
-                        throw new Exception("bug");
+                        throw new InvalidOperationException("bug");
                     }
+                }
             }
         }
     }
@@ -107,6 +115,9 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
             if (c is Simple9)
                 continue;
 
+            if (c is GroupSimple9)
+                continue;
+
             if (c is Simple16)
                 continue;
 
@@ -115,16 +126,20 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
                 int[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
-                        throw new Exception("bug");
+                        throw new InvalidOperationException("bug");
+                }
             }
             for (int L = 128; L <= N; L *= 2)
             {
                 int[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
-                        throw new Exception("bug");
+                        throw new InvalidOperationException("bug");
+                }
             }
         }
     }
@@ -205,9 +220,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
             for (int t = 0; t < TIMES; ++t)
             {
                 for (int k = 0; k < N; ++k)
-                {
                     data[k] = r.Next(1 << bit);
-                }
                 BitPacking.fastpack(data, 0, compressed, 0, bit);
                 BitPacking.fastunpack(compressed, 0, uncompressed, 0, bit);
                 Assert2.assertArrayEquals(uncompressed, data);
@@ -229,9 +242,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
             for (int t = 0; t < TIMES; ++t)
             {
                 for (int k = 0; k < N; ++k)
-                {
                     data[k] = r.Next(1 << bit);
-                }
                 BitPacking.fastpackwithoutmask(data, 0, compressed, 0, bit);
                 BitPacking.fastunpack(compressed, 0, uncompressed, 0, bit);
                 Assert2.assertArrayEquals(uncompressed, data);
@@ -239,22 +250,19 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         }
     }
 
-    /**
+    /*
      * @param array
-     *            some array
+     * some array
      * @param mask
-     *            provided mask
+     * provided mask
      */
-
     private static void maskArray(int[] array, int mask)
     {
         for (int i = 0, end = array.Length; i < end; ++i)
-        {
             array[i] &= mask;
-        }
     }
 
-    /**
+    /*
      * Verify bitpacking with exception.
      */
     [Fact]
@@ -271,20 +279,18 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
             for (int t = 0; t < TIMES; ++t)
             {
                 for (int k = 0; k < N; ++k)
-                {
-                    data[k] = r.Next();
-                }
+                    data[k] = (int)r.NextInt64(int.MinValue, (long)int.MaxValue + 1);
                 BitPacking.fastpack(data, 0, compressed, 0, bit);
                 BitPacking.fastunpack(compressed, 0, uncompressed, 0, bit);
 
                 // Check assertions.
-                maskArray(data, ((1 << bit) - 1));
+                maskArray(data, (1 << bit) - 1);
                 Assert2.assertArrayEquals(data, uncompressed);
             }
         }
     }
 
-    /**
+    /*
      * check that the codecs can be inverted.
      */
     [Fact]
@@ -295,7 +301,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         test(2, 18);
     }
 
-    /**
+    /*
      * check that there is no spurious output.
      */
     [Fact]
@@ -313,7 +319,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         testSpurious(new FastPFOR());
     }
 
-    /**
+    /*
      * check that an empty array generates an empty array after compression.
      */
     [Fact]
@@ -379,13 +385,11 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         for (int sparsity = 1; sparsity < 31 - nbr; sparsity += 4)
         {
             int[][] data = new int[N][];
-            int max = (1 << (nbr + 9));
+            int max = 1 << (nbr + sparsity);
             for (int k = 0; k < N; ++k)
-            {
-                data[k] = cdg.generateClustered((1 << nbr), max);
-            }
+                data[k] = cdg.generateClustered(1 << nbr, max);
 
-            testCodec(c, co, data, max);
+            testCodec(c, co, data);
         }
     }
 
@@ -396,30 +400,28 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         for (int sparsity = 1; sparsity < 31 - nbr; sparsity += 4)
         {
             int[][] data = new int[N][];
-            int max = (1 << (nbr + sparsity));
+            int max = 1 << (nbr + sparsity);
             for (int k = 0; k < N; ++k)
-            {
-                data[k] = cdg.generateClustered((1 << nbr), max);
-            }
+                data[k] = cdg.generateClustered(1 << nbr, max);
 
-            testCodec(new IntegratedComposition(new IntegratedBinaryPacking(), new IntegratedVariableByte()), new IntegratedComposition(new IntegratedBinaryPacking(), new IntegratedVariableByte()), data, max);
-            testCodec(new JustCopy(), new JustCopy(), data, max);
-            testCodec(new VariableByte(), new VariableByte(), data, max);
-            testCodec(new IntegratedVariableByte(), new IntegratedVariableByte(), data, max);
-            testCodec(new Composition(new BinaryPacking(), new VariableByte()), new Composition(new BinaryPacking(), new VariableByte()), data, max);
-            testCodec(new Composition(new NewPFD(), new VariableByte()), new Composition(new NewPFD(), new VariableByte()), data, max);
-            testCodec(new Composition(new NewPFDS9(), new VariableByte()), new Composition(new NewPFDS9(), new VariableByte()), data, max);
-            testCodec(new Composition(new NewPFDS16(), new VariableByte()), new Composition(new NewPFDS16(), new VariableByte()), data, max);
-            testCodec(new Composition(new OptPFD(), new VariableByte()), new Composition(new OptPFD(), new VariableByte()), data, max);
-            testCodec(new Composition(new OptPFDS9(), new VariableByte()), new Composition(new OptPFDS9(), new VariableByte()), data, max);
-            testCodec(new Composition(new OptPFDS16(), new VariableByte()), new Composition(new OptPFDS16(), new VariableByte()), data, max);
-            testCodec(new Composition(new FastPFOR128(), new VariableByte()), new Composition(new FastPFOR128(), new VariableByte()), data, max);
-            testCodec(new Composition(new FastPFOR(), new VariableByte()), new Composition(new FastPFOR(), new VariableByte()), data, max);
-            testCodec(new Simple9(), new Simple9(), data, max);
+            testCodec(new IntegratedComposition(new IntegratedBinaryPacking(), new IntegratedVariableByte()), new IntegratedComposition(new IntegratedBinaryPacking(), new IntegratedVariableByte()), data);
+            testCodec(new JustCopy(), new JustCopy(), data);
+            testCodec(new VariableByte(), new VariableByte(), data);
+            testCodec(new IntegratedVariableByte(), new IntegratedVariableByte(), data);
+            testCodec(new Composition(new BinaryPacking(), new VariableByte()), new Composition(new BinaryPacking(), new VariableByte()), data);
+            testCodec(new Composition(new NewPFD(), new VariableByte()), new Composition(new NewPFD(), new VariableByte()), data);
+            testCodec(new Composition(new NewPFDS9(), new VariableByte()), new Composition(new NewPFDS9(), new VariableByte()), data);
+            testCodec(new Composition(new NewPFDS16(), new VariableByte()), new Composition(new NewPFDS16(), new VariableByte()), data);
+            testCodec(new Composition(new OptPFD(), new VariableByte()), new Composition(new OptPFD(), new VariableByte()), data);
+            testCodec(new Composition(new OptPFDS9(), new VariableByte()), new Composition(new OptPFDS9(), new VariableByte()), data);
+            testCodec(new Composition(new OptPFDS16(), new VariableByte()), new Composition(new OptPFDS16(), new VariableByte()), data);
+            testCodec(new Composition(new FastPFOR128(), new VariableByte()), new Composition(new FastPFOR128(), new VariableByte()), data);
+            testCodec(new Composition(new FastPFOR(), new VariableByte()), new Composition(new FastPFOR(), new VariableByte()), data);
+            testCodec(new Simple9(), new Simple9(), data);
         }
     }
 
-    private static void testCodec(IntegerCODEC c, IntegerCODEC co, int[][] data, int max)
+    private static void testCodec(IntegerCODEC c, IntegerCODEC co, int[][] data)
     {
         int N = data.Length;
         int maxlength = 0;
@@ -429,7 +431,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
                 maxlength = data[k].Length;
         }
         int[] buffer = new int[maxlength + 1024];
-        int[] dataout = new int[4 * maxlength + 1024];
+        int[] dataout = new int[(4 * maxlength) + 1024];
         // 4x + 1024 to account for the possibility of some negative
         // compression.
         IntWrapper inpos = new IntWrapper();
@@ -462,7 +464,7 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         }
     }
 
-    /**
+    /*
      * Test for unsorted array.
      */
     [Fact]
@@ -511,10 +513,9 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
 
         testUnsorted2(new IntegratedComposition(new IntegratedBinaryPacking(), new IntegratedVariableByte()));
         testUnsorted2(new Composition(new IntegratedBinaryPacking(), new VariableByte()));
-
     }
 
-    public void testUnsorted(IntegerCODEC codec)
+    private void testUnsorted(IntegerCODEC codec)
     {
         int[] lengths = [133, 1026, 1333333];
         foreach (int N in lengths)
@@ -596,9 +597,13 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         int[] comp = TestUtils.compress(codec1, Arrays.copyOf(data, N));
         int[] answer = TestUtils.uncompress(codec2, comp, N);
         for (int k = 0; k < N; ++k)
+        {
             if (answer[k] != data[k])
-                throw new Exception("bug " + k + " " + answer[k]
+            {
+                throw new InvalidOperationException("bug " + k + " " + answer[k]
                                     + " != " + data[k]);
+            }
+        }
     }
 
     [Fact]
@@ -615,8 +620,12 @@ public class BasicTest(ITestOutputHelper testOutputHelper)
         int[] comp = TestUtils.compress(codec1, Arrays.copyOf(data, N));
         int[] answer = TestUtils.uncompress(codec2, comp, N);
         for (int k = 0; k < N; ++k)
+        {
             if (answer[k] != data[k])
-                throw new Exception("bug " + k + " " + answer[k]
+            {
+                throw new InvalidOperationException("bug " + k + " " + answer[k]
                                     + " != " + data[k]);
+            }
+        }
     }
 }

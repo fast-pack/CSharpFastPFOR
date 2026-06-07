@@ -1,5 +1,6 @@
-using Genbox.CSharpFastPFOR.Differential;
-using Genbox.CSharpFastPFOR.Port;
+using Genbox.CSharpFastPFOR.IntegerCompression;
+using Genbox.CSharpFastPFOR.IntegerCompression.Differential;
+using Genbox.CSharpFastPFOR.IntegerCompression.Port;
 using Genbox.CSharpFastPFOR.Tests.Port;
 
 namespace Genbox.CSharpFastPFOR.Tests;
@@ -11,9 +12,7 @@ public class BoundaryTest(ITestOutputHelper testOutputHelper)
         // Initialize array.
         int[] source = new int[length];
         for (int i = 0; i < source.Length; ++i)
-        {
             source[i] = i;
-        }
 
         // Compress an array.
         int[] compressed = new int[length];

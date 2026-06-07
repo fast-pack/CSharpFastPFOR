@@ -1,21 +1,76 @@
-/**
+/*
  * Static utility methods for test.
  */
 
-using Genbox.CSharpFastPFOR.Port;
+using Genbox.CSharpFastPFOR.IntegerCompression;
+using Genbox.CSharpFastPFOR.IntegerCompression.Port;
 using Genbox.CSharpFastPFOR.Tests.Port;
 
 namespace Genbox.CSharpFastPFOR.Tests.Utils;
 
 public class TestUtils
 {
-    /**
-    * Check that compress and uncompress keep original array.
-    *
-    * @param codec CODEC to test.
-    * @param orig  original integers
-    */
-    public static void assertSymmetry(IntegerCODEC codec, params int[] orig)
+    [Fact]
+    public void testPacking()
+    {
+        int[] outputarray = new int[32];
+        for (int b = 1; b < 32; ++b)
+        {
+            int[] data = new int[32];
+            int[] newdata = new int[32];
+            int mask = (1 << b) - 1;
+            for (int j = 0; j < data.Length; ++j)
+                data[j] = mask - (j % mask);
+
+            for (int n = 0; n <= 32; ++n)
+            {
+                Array.Fill(outputarray, 0);
+                int howmany = Util.pack(outputarray, 0, data, 0, n, b);
+                if (howmany != Util.packsize(n, b)) throw new InvalidOperationException("bug " + n + " " + b);
+                Util.unpack(Arrays.copyOf(outputarray, howmany), 0, newdata, 0, n, b);
+                for (int i = 0; i < n; ++i)
+                {
+                    if (newdata[i] != data[i])
+                        throw new InvalidOperationException("bug " + b + " " + n);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void testPackingw()
+    {
+        int[] outputarray = new int[32];
+        for (int b = 1; b < 32; ++b)
+        {
+            int[] data = new int[32];
+            int[] newdata = new int[32];
+            int mask = (1 << b) - 1;
+            for (int j = 0; j < data.Length; ++j)
+                data[j] = mask - (j % mask);
+
+            for (int n = 0; n <= 32; ++n)
+            {
+                Array.Fill(outputarray, 0);
+                int howmany = Util.packw(outputarray, 0, data, n, b);
+                if (howmany != Util.packsizew(n, b)) throw new InvalidOperationException("bug " + n + " " + b);
+                Util.unpackw(Arrays.copyOf(outputarray, howmany), 0, newdata, n, b);
+                for (int i = 0; i < n; ++i)
+                {
+                    if (newdata[i] != data[i])
+                        throw new InvalidOperationException("bug " + b + " " + n);
+                }
+            }
+        }
+    }
+
+    /*
+     * Check that compress and uncompress keep original array.
+     *
+     * @param codec CODEC to test.
+     * @param orig  original integers
+     */
+    internal static void assertSymmetry(IntegerCODEC codec, params int[] orig)
     {
         // There are some cases that compressed array is bigger than original
         // array.  So output array for compress must be larger.
@@ -84,7 +139,7 @@ public class TestUtils
 
     public static int[] compressHeadless(SkippableIntegerCODEC codec, int[] data)
     {
-        int[] outBuf = new int[data.Length * 4];
+        int[] outBuf = new int[codec.maxHeadlessCompressedLength(new IntWrapper(), data.Length)];
         IntWrapper inPos = new IntWrapper();
         IntWrapper outPos = new IntWrapper();
         codec.headlessCompress(data, inPos, data.Length, outBuf, outPos);
@@ -97,7 +152,7 @@ public class TestUtils
         IntWrapper inPos = new IntWrapper();
         IntWrapper outPos = new IntWrapper();
         codec.headlessUncompress(data, inPos, data.Length, outBuf, outPos, len);
-        if (outPos.get() < len) throw new Exception("Insufficient output.");
+        if (outPos.get() < len) throw new InvalidOperationException("Insufficient output.");
         return Arrays.copyOf(outBuf, outPos.get());
     }
 }

@@ -113,3 +113,21 @@ indent_style = unset
 insert_final_newline = false
 tab_width = unset
 trim_trailing_whitespace = false
+
+# Public names intentionally mirror the JavaFastPFOR API.
+[Src/**/*.cs]
+resharper_inconsistent_naming_highlighting = none
+
+# The port intentionally preserves JavaFastPFOR's public compatibility surface.
+resharper_class_never_instantiated_global_highlighting = none
+resharper_class_with_virtual_members_never_inherited_global_highlighting = none
+resharper_convert_to_static_class_highlighting = none
+resharper_member_can_be_private_global_highlighting = none
+resharper_redundant_type_declaration_body_highlighting = none
+resharper_unused_member_global_highlighting = none
+resharper_unused_method_return_value_global_highlighting = none
+resharper_unused_parameter_global_highlighting = none
+resharper_unused_type_global_highlighting = none
+resharper_unused_type_parameter_highlighting = none
+resharper_use_index_from_end_expression_highlighting = none
+resharper_virtual_member_call_in_constructor_highlighting = none

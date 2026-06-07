@@ -1,12 +1,12 @@
-
-/**
+/*
  * Just some basic sanity tests.
  *
  * @author Daniel Lemire
  */
 
-using Genbox.CSharpFastPFOR.Differential;
-using Genbox.CSharpFastPFOR.Port;
+using Genbox.CSharpFastPFOR.IntegerCompression;
+using Genbox.CSharpFastPFOR.IntegerCompression.Differential;
+using Genbox.CSharpFastPFOR.IntegerCompression.Port;
 using Genbox.CSharpFastPFOR.Tests.Port;
 using Genbox.CSharpFastPFOR.Tests.Utils;
 
@@ -40,9 +40,7 @@ public class ByteBasicTest(ITestOutputHelper testOutputHelper)
                 IntWrapper cOffset = new IntWrapper(0);
                 C.uncompress(b, bOffset, len, c, cOffset);
                 if (!Arrays.equals(a, c))
-                {
                     testOutputHelper.WriteLine("Problem with " + C);
-                }
                 Assert2.assertArrayEquals(a, c);
             }
         }
@@ -62,16 +60,20 @@ public class ByteBasicTest(ITestOutputHelper testOutputHelper)
                 sbyte[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
-                        throw new Exception("bug " + c + " " + k + " " + answer[k] + " " + data[k]);
+                        throw new InvalidOperationException("bug " + c + " " + k + " " + answer[k] + " " + data[k]);
+                }
             }
             for (int L = 128; L <= N; L *= 2)
             {
                 sbyte[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
-                        throw new Exception("bug");
+                        throw new InvalidOperationException("bug");
+                }
             }
         }
     }
@@ -93,16 +95,20 @@ public class ByteBasicTest(ITestOutputHelper testOutputHelper)
                 sbyte[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
-                        throw new Exception("bug at k = " + k + " " + answer[k] + " " + data[k]);
+                        throw new InvalidOperationException("bug at k = " + k + " " + answer[k] + " " + data[k]);
+                }
             }
             for (int L = 128; L <= N; L *= 2)
             {
                 sbyte[] comp = TestUtils.compress(c, Arrays.copyOf(data, L));
                 int[] answer = TestUtils.uncompress(c, comp, L);
                 for (int k = 0; k < L; ++k)
+                {
                     if (answer[k] != data[k])
-                        throw new Exception("bug");
+                        throw new InvalidOperationException("bug");
+                }
             }
         }
     }

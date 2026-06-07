@@ -1,11 +1,11 @@
-/**
+/*
  * This code is released under the
  * Apache License Version 2.0 http://www.apache.org/licenses/.
  *
  * (c) Daniel Lemire, http://lemire.me/en/
  */
 
-/**
+/*
  *
  * Simple class meant to compare the speed of different schemes.
  *
@@ -13,15 +13,60 @@
  *
  */
 
-using Genbox.CSharpFastPFOR.Differential;
-using Genbox.CSharpFastPFOR.Port;
-using Genbox.CSharpFastPFOR.Synth;
+using Genbox.CSharpFastPFOR.IntegerCompression;
+using Genbox.CSharpFastPFOR.IntegerCompression.Differential;
+using Genbox.CSharpFastPFOR.IntegerCompression.Port;
+using Genbox.CSharpFastPFOR.IntegerCompression.Synth;
+using System.Globalization;
 
 namespace Genbox.CSharpFastPFOR.Benchmarks;
 
-public static class BenchmarkSkippable
+internal static class BenchmarkSkippable
 {
-    private static int compressWithSkipTable(object c, int[] data, int[] output, IntWrapper outpos, int[] metadata, int blocksize)
+    private static readonly object[] codecs =
+    [
+        new SkippableIntegratedComposition(new IntegratedBinaryPacking(),
+            new IntegratedVariableByte()),
+        new JustCopy(), new VariableByte(),
+
+        new SkippableComposition(new BinaryPacking(), new VariableByte()),
+        new SkippableComposition(new NewPFD(), new VariableByte()),
+        new SkippableComposition(new NewPFDS9(), new VariableByte()),
+        new SkippableComposition(new NewPFDS16(), new VariableByte()),
+        new SkippableComposition(new OptPFD(), new VariableByte()),
+        new SkippableComposition(new OptPFDS9(), new VariableByte()),
+        new SkippableComposition(new OptPFDS16(), new VariableByte()),
+        new SkippableComposition(new FastPFOR(), new VariableByte()),
+        new SkippableComposition(new FastPFOR128(), new VariableByte()),
+        new Simple9(), new Simple16()
+    ];
+
+    /*
+     * Main method.
+     *
+     * @param args
+     * command-line arguments
+     */
+    public static void main(string[] args)
+    {
+        _ = args;
+        Console.WriteLine("# benchmark based on the ClusterData model from:");
+        Console.WriteLine("#      Vo Ngoc Anh and Alistair Moffat. ");
+        Console.WriteLine("#     Index compression using 64-bit words.");
+        Console.WriteLine("#      Softw. Pract. Exper.40, 2 (February 2010), 131-147. ");
+        Console.WriteLine();
+
+        string csvFile = "benchmark-" + DateTime.Now.ToString("yyyyMMddTHHmmss", CultureInfo.InvariantCulture) + ".csv";
+        using FileStream file = new FileStream(csvFile, FileMode.Create);
+        using StreamWriter writer = new StreamWriter(file);
+        Console.WriteLine("# Results will be written into a CSV file: " + csvFile);
+        Console.WriteLine();
+        test(writer, 20, 18, 10);
+        Console.WriteLine();
+        Console.WriteLine("Results were written into a CSV file: " + csvFile);
+    }
+
+    private static void compressWithSkipTable(object c, int[] data, int[] output, IntWrapper outpos, int[] metadata, int blocksize)
     {
         int metapos = 0;
         metadata[metapos++] = data.Length;
@@ -32,28 +77,27 @@ public static class BenchmarkSkippable
         {
             metadata[metapos++] = outpos.get();
             metadata[metapos++] = initvalue;
-            if (c is SkippableIntegerCODEC)
+            if (c is SkippableIntegerCODEC skippableCodec)
             {
-                int size = blocksize > data.Length - inpos.get() ? data.Length
-                                                                   - inpos.get() : blocksize;
+                int size = blocksize > data.Length - inpos.get()
+                    ? data.Length
+                      - inpos.get()
+                    : blocksize;
                 initvalue = Delta.delta(data, inpos.get(), size, initvalue);
 
-                ((SkippableIntegerCODEC)c).headlessCompress(data, inpos,
+                skippableCodec.headlessCompress(data, inpos,
                     blocksize, output, outpos);
             }
-            else if (c is SkippableIntegratedIntegerCODEC)
+            else if (c is SkippableIntegratedIntegerCODEC integratedCodec)
             {
                 ival.set(initvalue);
-                ((SkippableIntegratedIntegerCODEC)c).headlessCompress(data,
+                integratedCodec.headlessCompress(data,
                     inpos, blocksize, output, outpos, ival);
                 initvalue = ival.get();
             }
             else
-            {
-                throw new Exception("Unrecognized codec " + c);
-            }
+                throw new ArgumentException("Unrecognized codec " + c, nameof(c));
         }
-        return metapos;
     }
 
     private static int decompressFromSkipTable(object c, int[] compressed, IntWrapper compressedpos, int[] metadata, int blocksize, int[] data)
@@ -72,47 +116,46 @@ public static class BenchmarkSkippable
             int initvalue = metadata[metapos++];
             int outputlocation = uncomppos.get();
             if (location != compressedpos.get())
-                throw new Exception("Bug " + location + " "
-                                    + compressedpos.get() + " codec " + c);
-
-            if (c is SkippableIntegerCODEC)
             {
-                ((SkippableIntegerCODEC)c).headlessUncompress(compressed,
+                throw new InvalidOperationException("Bug " + location + " "
+                                    + compressedpos.get() + " codec " + c);
+            }
+
+            if (c is SkippableIntegerCODEC skippableCodec)
+            {
+                skippableCodec.headlessUncompress(compressed,
                     compressedpos, compressed.Length - uncomppos.get(),
                     data, uncomppos, num);
-                initvalue = Delta.fastinverseDelta(data, outputlocation, num,
-                    initvalue);
+                Delta.fastinverseDelta(data, outputlocation, num, initvalue);
             }
-            else if (c is SkippableIntegratedIntegerCODEC)
+            else if (c is SkippableIntegratedIntegerCODEC integratedCodec)
             {
                 ival.set(initvalue);
-                ((SkippableIntegratedIntegerCODEC)c).headlessUncompress(
+                integratedCodec.headlessUncompress(
                     compressed, compressedpos, compressed.Length
                                                - uncomppos.get(), data, uncomppos, num, ival);
             }
             else
-            {
-                throw new Exception("Unrecognized codec " + c);
-            }
+                throw new ArgumentException("Unrecognized codec " + c, nameof(c));
         }
         return length;
     }
 
-    /**
+    /*
      * Standard benchmark
      *
      * @param csvLog
-     *            Writer for CSV log.
+     * Writer for CSV log.
      * @param c
-     *            the codec
+     * the codec
      * @param data
-     *            arrays of input data
+     * arrays of input data
      * @param repeat
-     *            How many times to repeat the test
+     * How many times to repeat the test
      * @param verbose
-     *            whether to output result on screen
+     * whether to output result on screen
      */
-    private static void testCodec(StreamWriter csvLog, int sparsity, object c,int[][] data, int repeat, bool verbose)
+    private static void testCodec(StreamWriter csvLog, int sparsity, object c, int[][] data, int repeat, bool verbose)
     {
         if (verbose)
         {
@@ -128,14 +171,12 @@ public static class BenchmarkSkippable
         {
             totalSize += data[k].Length;
             if (data[k].Length > maxLength)
-            {
                 maxLength = data[k].Length;
-            }
         }
 
         // 4x + 1024 to account for the possibility of some negative
         // compression.
-        int[] compressBuffer = new int[4 * maxLength + 1024];
+        int[] compressBuffer = new int[(4 * maxLength) + 1024];
         int[] decompressBuffer = new int[maxLength + 1024];
         int[] metadataBuffer = new int[maxLength];
 
@@ -169,7 +210,7 @@ public static class BenchmarkSkippable
                 int thiscompsize = outpos.get();
                 size += thiscompsize;
                 // dry run
-                int volume = 0;
+                int volume;
                 {
                     IntWrapper compressedpos = new IntWrapper(0);
                     volume = decompressFromSkipTable(c, compressBuffer,
@@ -178,12 +219,14 @@ public static class BenchmarkSkippable
 
                     // let us check the answer
                     if (volume != backupdata.Length)
-                        throw new Exception(
+                    {
+                        throw new InvalidOperationException(
                             "Bad output size with codec " + c);
+                    }
                     for (int j = 0; j < volume; ++j)
                     {
                         if (data[k][j] != decompressBuffer[j])
-                            throw new Exception("bug in codec " + c);
+                            throw new InvalidOperationException("bug in codec " + c);
                     }
                 }
                 // extract (uncompress) data
@@ -200,9 +243,11 @@ public static class BenchmarkSkippable
                 // measure time of extraction (uncompression).
                 decompressTime += (afterDecompress - beforeDecompress) / (double)times;
                 if (volume != data[k].Length)
-                    throw new Exception("we have a bug (diff length) "
+                {
+                    throw new InvalidOperationException("we have a bug (diff length) "
                                         + c + " expected " + data[k].Length + " got "
                                         + volume);
+                }
 
                 // verify: compare original array with
                 // compressed and
@@ -211,7 +256,7 @@ public static class BenchmarkSkippable
                 {
                     if (decompressBuffer[m] != data[k][m])
                     {
-                        throw new Exception(
+                        throw new InvalidOperationException(
                             "we have a bug (actual difference), expected "
                             + data[k][m] + " found "
                             + decompressBuffer[m] + " at " + m);
@@ -222,66 +267,47 @@ public static class BenchmarkSkippable
 
         if (verbose)
         {
-            double bitsPerInt = size * 32.0 / totalSize;
-            double compressSpeed = Math.Round(totalSize * repeat / (compressTime));
-            double decompressSpeed = Math.Round(totalSize * repeat / (decompressTime));
+            double bitsPerInt = (size * 32.0) / totalSize;
+            double compressSpeed = Math.Round((totalSize * repeat) / compressTime);
+            double decompressSpeed = Math.Round((totalSize * repeat) / decompressTime);
             Console.WriteLine("\t{0:0.00}\t{1}\t{2}", bitsPerInt, compressSpeed, decompressSpeed);
             csvLog.WriteLine("\"{0}\",{1},{2:0.00},{3},{4}", c, sparsity, bitsPerInt, compressSpeed, decompressSpeed);
         }
     }
 
-    /**
+    /*
      * Generate test data.
      *
      * @param N
-     *            How many input arrays to generate
+     * How many input arrays to generate
      * @param nbr
-     *            How big (in log2) should the arrays be
+     * How big (in log2) should the arrays be
      * @param sparsity
-     *            How sparse test data generated
+     * How sparse test data generated
      */
     private static int[][] generateTestData(ClusteredDataGenerator dataGen, int N, int nbr, int sparsity)
     {
         int[][] data = new int[N][];
 
-        int dataSize = (1 << (nbr + sparsity));
+        int dataSize = 1 << (nbr + sparsity);
         for (int i = 0; i < N; ++i)
-        {
-            data[i] = dataGen.generateClustered((1 << nbr), dataSize);
-        }
+            data[i] = dataGen.generateClustered(1 << nbr, dataSize);
         return data;
     }
 
-    private static object[] codecs =
-    [
-        new SkippableIntegratedComposition(new IntegratedBinaryPacking(),
-            new IntegratedVariableByte()), new JustCopy(), new VariableByte(),
-
-        new SkippableComposition(new BinaryPacking(), new VariableByte()),
-        new SkippableComposition(new NewPFD(), new VariableByte()),
-        new SkippableComposition(new NewPFDS9(), new VariableByte()),
-        new SkippableComposition(new NewPFDS16(), new VariableByte()),
-        new SkippableComposition(new OptPFD(), new VariableByte()),
-        new SkippableComposition(new OptPFDS9(), new VariableByte()),
-        new SkippableComposition(new OptPFDS16(), new VariableByte()),
-        new SkippableComposition(new FastPFOR(), new VariableByte()),
-        new SkippableComposition(new FastPFOR128(), new VariableByte()),
-        new Simple9(), new Simple16()
-    ];
-
-    /**
+    /*
      * Generates data and calls other tests.
      *
      * @param csvLog
-     *            Writer for CSV log.
+     * Writer for CSV log.
      * @param N
-     *            How many input arrays to generate
+     * How many input arrays to generate
      * @param nbr
-     *            how big (in log2) should the arrays be
+     * how big (in log2) should the arrays be
      * @param repeat
-     *            How many times should we repeat tests.
+     * How many times should we repeat tests.
      */
-    public static void test(StreamWriter csvLog, int N, int nbr, int repeat)
+    private static void test(StreamWriter csvLog, int N, int nbr, int repeat)
     {
         csvLog.WriteLine("\"Algorithm\",\"Sparsity\",\"Bits per int\",\"Compress speed (MiS)\",\"Decompress speed (MiS)\"");
         ClusteredDataGenerator cdg = new ClusteredDataGenerator();

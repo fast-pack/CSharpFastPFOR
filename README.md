@@ -15,6 +15,8 @@ API
 -----------------
 The API is excatly the same as JavaFastPFOR. See the documentation here: http://www.javadoc.io/doc/me.lemire.integercompression/JavaFastPFOR/
 
+This port was checked for parity against JavaFastPFOR version 0.3.14, commit [`a6518ff792317dc029530cdf4e05af3c4e4fe19e`](https://github.com/fast-pack/JavaFastPFOR/commit/a6518ff792317dc029530cdf4e05af3c4e4fe19e).
+
 References
 -----------------
 

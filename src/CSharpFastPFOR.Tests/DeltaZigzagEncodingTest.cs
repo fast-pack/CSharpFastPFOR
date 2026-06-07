@@ -3,6 +3,7 @@
  * Apache License Version 2.0 http://www.apache.org/licenses/.
  */
 
+using Genbox.CSharpFastPFOR.IntegerCompression;
 using Genbox.CSharpFastPFOR.Tests.Port;
 
 namespace Genbox.CSharpFastPFOR.Tests;
@@ -27,7 +28,7 @@ public class DeltaZigzagEncodingTest
         int[] expected)
     {
         Assert2.assertArrayEquals(expected, e.encodeArray(data));
-        Assert2.assertEquals(data[data.Length - 1], e.getContextValue());
+        Assert2.assertEquals(data[^1], e.getContextValue());
     }
 
     private static void checkDecode(
@@ -37,7 +38,7 @@ public class DeltaZigzagEncodingTest
     {
         int[] r = d.decodeArray(data);
         Assert2.assertArrayEquals(expected, r);
-        Assert2.assertEquals(r[r.Length - 1], d.getContextValue());
+        Assert2.assertEquals(r[^1], d.getContextValue());
     }
 
     [Fact]
@@ -83,21 +84,6 @@ public class DeltaZigzagEncodingTest
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     }
 
-    private class SpotChecker
-    {
-
-        private static readonly DeltaZigzagEncoding.Encoder encoder = new DeltaZigzagEncoding.Encoder(0);
-        private static readonly DeltaZigzagEncoding.Decoder decoder = new DeltaZigzagEncoding.Decoder(0);
-
-        public void check(int value)
-        {
-            SpotChecker.encoder.setContextValue(0);
-            SpotChecker.decoder.setContextValue(0);
-            int value2 = SpotChecker.decoder.decodeInt(SpotChecker.encoder.encodeInt(value));
-            Assert2.assertEquals(value, value2);
-        }
-    }
-
     [Fact]
     public void checkSpots()
     {
@@ -107,5 +93,19 @@ public class DeltaZigzagEncodingTest
         c.check(1375228800);
         c.check(1 << 30);
         c.check(1 << 31);
+    }
+
+    private class SpotChecker
+    {
+        private static readonly DeltaZigzagEncoding.Encoder encoder = new DeltaZigzagEncoding.Encoder(0);
+        private static readonly DeltaZigzagEncoding.Decoder decoder = new DeltaZigzagEncoding.Decoder(0);
+
+        public void check(int value)
+        {
+            encoder.setContextValue(0);
+            decoder.setContextValue(0);
+            int value2 = decoder.decodeInt(encoder.encodeInt(value));
+            Assert2.assertEquals(value, value2);
+        }
     }
 }
